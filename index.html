@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Chat</title>
+	<link rel="stylesheet" type="text/css" href="css/main.css">
+</head>
+<body>
+	<div class="chat">
+		<input type="text" class="chat-name" placeholder="Enter your name">
+		<div class="chat-messages">
+		</div>
+		<textarea class="chat-textarea" placeholder="Type your message"></textarea>
+		<div class="chat-status">Status: <span>Idle</span></div>
+	</div>
+	<script type="text/javascript" src="http://127.0.0.1:8000/socket.io/socket.io.js"></script>
+
+	<script type="text/javascript">
+		(function() {
+			var getNode = function(s) {
+				return document.querySelector(s);
+			},
+			// Get required nodes
+			status = getNode('.chat-status span'),
+			messages = getNode('.chat-messages'),
+			textarea = getNode('.chat textarea'),
+			chatName = getNode('.chat-name'),
+
+			statusDefault = status.textContent,
+
+			setStatus = function(s) {
+				status.textContent = s;
+				if (s !== statusDefault) {
+					var delay = setTimeout(function() {
+						setStatus(statusDefault);
+						clearInterval(delay);
+					}, 3000);
+				}
+			};
+
+			try {
+				var socket = io.connect('http://127.0.0.1:8000');
+			} catch(e) {
+				// Set status to warn user
+			}
+
+			if (socket !== undefined) {
+				// Listen for output
+				socket.on('output', function(data) {
+					if (data.length) {
+							// Loop through results
+							for (var x = 0; x < data.length; x++) {
+								var message = document.createElement('div');
+								message.setAttribute('class', 'chat-message');
+								message.textContent = data[x].name + ': ' + data[x].message;
+
+								// Append the message in the .chat-messages div
+								messages.appendChild(message);
+								messages.insertBefore(message, messages.firstChild);
+							}
+					}
+				});
+
+				// Listen for a status
+				// socket.on('nameOfYourChoice')
+				socket.on('status', function(data) {
+					// Set the type of data accordingly
+					// If the status is an object, return the data.message and clear the form using data.clear
+					setStatus((typeof data === 'object') ? data.message : data);
+
+					// Check if the status
+					if (data.clear === true) {
+						textarea.value = '';
+					}
+				});
+
+				// Listen for keydown
+				textarea.addEventListener('keydown', function(event) {
+					var self = this; // This is the textarea
+					var name = chatName.value; // .chat-name input
+
+					status.textContent = 'Typing';
+					// sendStatus('Typing...');
+
+					if (event.which === 13 && event.shiftKey === false) {
+						// Pass the input in the database using socket.emit
+						socket.emit('input', {
+							name: name,
+							message: self.value
+						});
+
+						event.preventDefault();
+					}
+				});
+
+				textarea.addEventListener('blur', function() {
+						status.textContent = 'Idle';
+				});
+			} // END if (socket !== undefined)
+		})();
+	</script>
+	<script src="try.js"></script>
+</body>
+</html>
